@@ -1,0 +1,940 @@
+javascript:(function() {
+  // Default unit to area mapping
+  const unitToAreaMap = {
+    "1A": 767, "1B": 566, "1C": 566, "1D": 500, "1E": 380,
+    "2A": 617, "2B": 990, "2C": 480, "2D": 560, "2E": 305,
+    "2F": 832, "2G": 300, "2H": 600, "2I": 736, "2J": 783,
+    "2K": 340, "3A": 617, "3B": 990, "3C": 480, "3D": 560,
+    "3E": 305, "3F": 832, "3G": 300, "3H": 600, "3I": 736,
+    "3J": 783, "3K": 340, "4A": 617, "4B": 990, "4C": 480,
+    "4D": 560, "4E": 305, "4F": 832, "4G": 300, "4H": 600,
+    "4I": 736, "4J": 783, "4K": 340, "5A": 617, "5B": 990,
+    "5C": 480, "5D": 560, "5E": 305, "5F": 832, "5G": 300,
+    "5H": 600, "5I": 736, "5J": 783, "5K": 340, "6A": 724,
+    "6B": 842, "6C": 342, "6D": 323, "6E": 685
+  };
+  
+  // Create UI for the tool
+  function createUI() {
+    // Remove any existing UI
+    const existingUI = document.getElementById('angular-updater-ui');
+    if (existingUI) {
+      document.body.removeChild(existingUI);
+    }
+    
+    // Create the UI container
+    const container = document.createElement('div');
+    container.id = 'angular-updater-ui';
+    container.style = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      width: 350px;
+      background: white;
+      border: 2px solid #3498db;
+      border-radius: 8px;
+      padding: 15px;
+      z-index: 10000;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+      font-family: Arial, sans-serif;
+      max-height: 90vh;
+      overflow-y: auto;
+    `;
+    
+    // Add header
+    const header = document.createElement('h2');
+    header.textContent = 'Angular Model Field Updater';
+    header.style = 'margin-top: 0; margin-bottom: 15px; color: #2c3e50; font-size: 18px;';
+    container.appendChild(header);
+    
+    // Information panel
+    const infoPanel = document.createElement('div');
+    infoPanel.style = 'margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 6px;';
+    infoPanel.innerHTML = `
+      <p style="margin: 0 0 10px 0; font-size: 14px;">
+        This tool will target fields with:
+        <ul style="margin: 0; padding-left: 20px; font-size: 14px;">
+          <li>Placeholder: "unit"</li>
+          <li>Angular model: "ydt.value"</li>
+        </ul>
+      </p>
+    `;
+    container.appendChild(infoPanel);
+    
+    // Field scanner section
+    const scanSection = document.createElement('div');
+    scanSection.style = 'margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 6px;';
+    
+    const scanHeader = document.createElement('h3');
+    scanHeader.textContent = 'Step 1: Scan for Fields';
+    scanHeader.style = 'margin-top: 0; margin-bottom: 10px; font-size: 16px; color: #2c3e50;';
+    scanSection.appendChild(scanHeader);
+    
+    const scanButton = document.createElement('button');
+    scanButton.textContent = 'Scan for Target Fields';
+    scanButton.style = `
+      width: 100%;
+      padding: 8px;
+      background: #3498db;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+      margin-bottom: 10px;
+    `;
+    scanButton.onclick = scanForFields;
+    scanSection.appendChild(scanButton);
+    
+    // Scan results
+    const scanResults = document.createElement('div');
+    scanResults.id = 'scan-results';
+    scanResults.style = `
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 10px;
+      max-height: 100px;
+      overflow-y: auto;
+      font-size: 12px;
+    `;
+    scanResults.innerHTML = '<em>Scan results will appear here</em>';
+    scanSection.appendChild(scanResults);
+    
+    container.appendChild(scanSection);
+    
+    // Single unit section
+    const singleUnitSection = document.createElement('div');
+    singleUnitSection.style = 'margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 6px;';
+    
+    const singleUnitHeader = document.createElement('h3');
+    singleUnitHeader.textContent = 'Step 2: Update Unit Area';
+    singleUnitHeader.style = 'margin-top: 0; margin-bottom: 10px; font-size: 16px; color: #2c3e50;';
+    singleUnitSection.appendChild(singleUnitHeader);
+    
+    // Unit input
+    const unitInputContainer = document.createElement('div');
+    unitInputContainer.style = 'display: flex; margin-bottom: 10px;';
+    
+    const unitInput = document.createElement('input');
+    unitInput.id = 'unit-input';
+    unitInput.type = 'text';
+    unitInput.placeholder = 'Enter unit (e.g. 1A)';
+    unitInput.style = `
+      flex: 1;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px 0 0 4px;
+      box-sizing: border-box;
+    `;
+    unitInputContainer.appendChild(unitInput);
+    
+    const areaDisplay = document.createElement('input');
+    areaDisplay.id = 'area-display';
+    areaDisplay.type = 'text';
+    areaDisplay.placeholder = 'Area (sq ft)';
+    areaDisplay.readOnly = true;
+    areaDisplay.style = `
+      width: 100px;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-left: none;
+      border-right: none;
+      box-sizing: border-box;
+      background: #f9f9f9;
+    `;
+    unitInputContainer.appendChild(areaDisplay);
+    
+    const lookupButton = document.createElement('button');
+    lookupButton.textContent = 'Lookup';
+    lookupButton.style = `
+      padding: 8px 15px;
+      background: #3498db;
+      color: white;
+      border: none;
+      border-radius: 0 4px 4px 0;
+      cursor: pointer;
+    `;
+    lookupButton.onclick = lookupUnit;
+    unitInputContainer.appendChild(lookupButton);
+    
+    singleUnitSection.appendChild(unitInputContainer);
+    
+    // Update button
+    const updateButton = document.createElement('button');
+    updateButton.textContent = 'Update Unit Area Field';
+    updateButton.style = `
+      width: 100%;
+      padding: 8px;
+      background: #2ecc71;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+    `;
+    updateButton.onclick = updateUnitArea;
+    singleUnitSection.appendChild(updateButton);
+    
+    container.appendChild(singleUnitSection);
+    
+    // Bulk update section
+    const bulkSection = document.createElement('div');
+    bulkSection.style = 'margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 6px;';
+    
+    const bulkHeader = document.createElement('h3');
+    bulkHeader.textContent = 'Step 3: Bulk Update';
+    bulkHeader.style = 'margin-top: 0; margin-bottom: 10px; font-size: 16px; color: #2c3e50;';
+    bulkSection.appendChild(bulkHeader);
+    
+    // Method selection
+    const methodContainer = document.createElement('div');
+    methodContainer.style = 'margin-bottom: 10px;';
+    
+    const methodLabel = document.createElement('label');
+    methodLabel.textContent = 'Update Method:';
+    methodLabel.style = 'display: block; margin-bottom: 5px;';
+    methodContainer.appendChild(methodLabel);
+    
+    const methodSelect = document.createElement('select');
+    methodSelect.id = 'update-method';
+    methodSelect.style = `
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      margin-bottom: 10px;
+    `;
+    
+    const methods = [
+      { value: "angular", name: "Angular Model (ydt.value)" },
+      { value: "direct", name: "Direct Field Update" },
+      { value: "events", name: "Field with Events" },
+      { value: "all", name: "Try All Methods" }
+    ];
+    
+    methods.forEach(method => {
+      const option = document.createElement('option');
+      option.value = method.value;
+      option.textContent = method.name;
+      if (method.value === "angular") option.selected = true;
+      methodSelect.appendChild(option);
+    });
+    
+    methodContainer.appendChild(methodSelect);
+    bulkSection.appendChild(methodContainer);
+    
+    // Bulk update button
+    const bulkUpdateButton = document.createElement('button');
+    bulkUpdateButton.textContent = 'Update All Units';
+    bulkUpdateButton.style = `
+      width: 100%;
+      padding: 8px;
+      background: #9b59b6;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+      margin-bottom: 10px;
+    `;
+    bulkUpdateButton.onclick = updateAllUnits;
+    bulkSection.appendChild(bulkUpdateButton);
+    
+    // Specific units input
+    const specificUnitsContainer = document.createElement('div');
+    specificUnitsContainer.style = 'margin-top: 15px; padding-top: 15px; border-top: 1px solid #ddd;';
+    
+    const specificUnitsLabel = document.createElement('label');
+    specificUnitsLabel.textContent = 'Specific Units (comma-separated):';
+    specificUnitsLabel.style = 'display: block; margin-bottom: 5px;';
+    specificUnitsContainer.appendChild(specificUnitsLabel);
+    
+    const specificUnitsInput = document.createElement('input');
+    specificUnitsInput.id = 'specific-units';
+    specificUnitsInput.type = 'text';
+    specificUnitsInput.placeholder = 'e.g., 1A, 2B, 3C';
+    specificUnitsInput.style = `
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      margin-bottom: 10px;
+    `;
+    specificUnitsContainer.appendChild(specificUnitsInput);
+    
+    const specificUpdateButton = document.createElement('button');
+    specificUpdateButton.textContent = 'Update Specific Units';
+    specificUpdateButton.style = `
+      width: 100%;
+      padding: 8px;
+      background: #f39c12;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+    `;
+    specificUpdateButton.onclick = updateSpecificUnits;
+    specificUnitsContainer.appendChild(specificUpdateButton);
+    
+    bulkSection.appendChild(specificUnitsContainer);
+    container.appendChild(bulkSection);
+    
+    // Status section
+    const statusSection = document.createElement('div');
+    statusSection.style = 'margin-bottom: 15px;';
+    
+    const statusHeader = document.createElement('h3');
+    statusHeader.textContent = 'Status';
+    statusHeader.style = 'margin-top: 0; margin-bottom: 10px; font-size: 16px; color: #2c3e50;';
+    statusSection.appendChild(statusHeader);
+    
+    const statusBox = document.createElement('div');
+    statusBox.id = 'status-box';
+    statusBox.style = `
+      background: #f8f9fa;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 10px;
+      font-size: 14px;
+      min-height: 60px;
+    `;
+    statusBox.innerHTML = '<em>Ready to update fields</em>';
+    statusSection.appendChild(statusBox);
+    
+    container.appendChild(statusSection);
+    
+    // Close button
+    const closeButton = document.createElement('button');
+    closeButton.textContent = 'Close';
+    closeButton.style = `
+      width: 100%;
+      padding: 8px;
+      background: #95a5a6;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    `;
+    closeButton.onclick = function() {
+      document.body.removeChild(container);
+    };
+    container.appendChild(closeButton);
+    
+    // Add to document
+    document.body.appendChild(container);
+    
+    return container;
+  }
+  
+  // Find all input fields with placeholder "unit" and Angular model "ydt.value"
+  function scanForFields() {
+    const results = document.getElementById('scan-results');
+    results.innerHTML = '<em>Scanning for fields...</em>';
+    
+    // Find all input fields
+    const fields = document.querySelectorAll('input');
+    const matchingFields = [];
+    
+    // Filter fields based on criteria
+    for (const field of fields) {
+      const placeholder = field.placeholder || '';
+      const ngModel = field.getAttribute('ng-model') || '';
+      
+      if (placeholder.toLowerCase().includes('unit') || ngModel.includes('ydt.value')) {
+        matchingFields.push({
+          element: field,
+          placeholder: placeholder,
+          ngModel: ngModel
+        });
+      }
+    }
+    
+    // Show results
+    if (matchingFields.length === 0) {
+      results.innerHTML = '<em>No matching fields found. Try different criteria.</em>';
+      updateStatus('No fields found matching criteria.');
+      return;
+    }
+    
+    // Format and display results
+    let html = `<strong>Found ${matchingFields.length} matching fields:</strong><br>`;
+    
+    for (let i = 0; i < matchingFields.length; i++) {
+      const field = matchingFields[i];
+      html += `<div style="margin-bottom: 5px;">`;
+      html += `<span>${i+1}. `;
+      if (field.placeholder) html += `Placeholder: "${field.placeholder}" `;
+      if (field.ngModel) html += `Model: "${field.ngModel}" `;
+      html += `Value: "${field.element.value || ''}"`;
+      html += `</span>`;
+      html += ` <button onclick="window.highlightField(${i})" style="background: #3498db; color: white; border: none; border-radius: 3px; padding: 2px 5px; cursor: pointer; font-size: 10px;">Show</button>`;
+      html += `</div>`;
+    }
+    
+    results.innerHTML = html;
+    
+    // Store matching fields globally
+    window.matchingFields = matchingFields;
+    
+    // Create highlight function
+    window.highlightField = function(index) {
+      const field = window.matchingFields[index];
+      if (field && field.element) {
+        highlightElement(field.element);
+        scrollToElement(field.element);
+      }
+    };
+    
+    updateStatus(`Found ${matchingFields.length} fields that match criteria.`);
+  }
+  
+  // Lookup a unit's area value
+  function lookupUnit() {
+    const unitInput = document.getElementById('unit-input');
+    const areaDisplay = document.getElementById('area-display');
+    const unit = unitInput.value.trim().toUpperCase();
+    
+    if (!unit) {
+      updateStatus('Please enter a unit number');
+      return;
+    }
+    
+    if (unitToAreaMap[unit]) {
+      areaDisplay.value = unitToAreaMap[unit];
+      updateStatus(`Found unit ${unit}: ${unitToAreaMap[unit]} sq ft`);
+    } else {
+      areaDisplay.value = '';
+      updateStatus(`Unit ${unit} not found in mapping!`);
+    }
+  }
+  
+  // Update a single unit's area field
+  function updateUnitArea() {
+    const unitInput = document.getElementById('unit-input');
+    const areaDisplay = document.getElementById('area-display');
+    const unit = unitInput.value.trim().toUpperCase();
+    const updateMethod = document.getElementById('update-method').value;
+    
+    if (!unit) {
+      updateStatus('Please enter a unit number');
+      return;
+    }
+    
+    if (!unitToAreaMap[unit]) {
+      updateStatus(`Unit ${unit} not found in mapping!`);
+      return;
+    }
+    
+    if (!areaDisplay.value) {
+      lookupUnit(); // Make sure area value is populated
+    }
+    
+    const areaValue = unitToAreaMap[unit];
+    
+    // Find the unit field
+    const unitFields = findUnitFields(unit);
+    
+    if (unitFields.length === 0) {
+      updateStatus(`No fields found containing unit ${unit}!`);
+      return;
+    }
+    
+    updateStatus(`Found ${unitFields.length} fields with unit ${unit}. Looking for area field...`);
+    
+    // Find the corresponding area field
+    const areaFields = findAreaFields();
+    
+    if (areaFields.length === 0) {
+      updateStatus('No area fields found!');
+      return;
+    }
+    
+    // Try to update the area field
+    let success = false;
+    
+    // Try different methods based on selection
+    for (const areaField of areaFields) {
+      let updateSuccess = false;
+      
+      switch (updateMethod) {
+        case "angular":
+          updateSuccess = updateAngularModel(areaField.element, areaValue);
+          break;
+        case "direct":
+          updateSuccess = updateDirectField(areaField.element, areaValue);
+          break;
+        case "events":
+          updateSuccess = updateFieldWithEvents(areaField.element, areaValue);
+          break;
+        case "all":
+          updateSuccess = updateFieldAllMethods(areaField.element, areaValue);
+          break;
+      }
+      
+      if (updateSuccess) {
+        highlightElement(areaField.element, "#2ecc71");
+        success = true;
+        break;
+      }
+    }
+    
+    if (success) {
+      updateStatus(`Successfully updated area value for unit ${unit} to ${areaValue} sq ft`);
+    } else {
+      updateStatus(`Failed to update area field for unit ${unit}`);
+    }
+  }
+  
+  // Update all units
+  function updateAllUnits() {
+    const units = Object.keys(unitToAreaMap);
+    const updateMethod = document.getElementById('update-method').value;
+    
+    updateStatus(`Starting to update all ${units.length} units...`);
+    
+    let successCount = 0;
+    let failureCount = 0;
+    
+    // Process each unit
+    function processNext(index) {
+      if (index >= units.length) {
+        updateStatus(`Completed updates: ${successCount} successes, ${failureCount} failures`);
+        return;
+      }
+      
+      const unit = units[index];
+      const areaValue = unitToAreaMap[unit];
+      
+      // Find units on the page
+      const unitFields = findUnitFields(unit);
+      
+      if (unitFields.length > 0) {
+        // Find area fields
+        const areaFields = findAreaFields();
+        
+        if (areaFields.length > 0) {
+          // Try to update
+          let success = false;
+          
+          for (const areaField of areaFields) {
+            let updateSuccess = false;
+            
+            switch (updateMethod) {
+              case "angular":
+                updateSuccess = updateAngularModel(areaField.element, areaValue);
+                break;
+              case "direct":
+                updateSuccess = updateDirectField(areaField.element, areaValue);
+                break;
+              case "events":
+                updateSuccess = updateFieldWithEvents(areaField.element, areaValue);
+                break;
+              case "all":
+                updateSuccess = updateFieldAllMethods(areaField.element, areaValue);
+                break;
+            }
+            
+            if (updateSuccess) {
+              highlightElement(areaField.element, "#2ecc71");
+              success = true;
+              break;
+            }
+          }
+          
+          if (success) {
+            successCount++;
+            updateStatus(`Updated unit ${unit} (${index+1}/${units.length}): ${areaValue} sq ft`);
+          } else {
+            failureCount++;
+            updateStatus(`Failed to update unit ${unit} (${index+1}/${units.length})`);
+          }
+        } else {
+          failureCount++;
+          updateStatus(`No area fields found for unit ${unit} (${index+1}/${units.length})`);
+        }
+      } else {
+        failureCount++;
+        updateStatus(`No fields found for unit ${unit} (${index+1}/${units.length})`);
+      }
+      
+      // Process next unit with delay
+      setTimeout(() => {
+        processNext(index + 1);
+      }, 250);
+    }
+    
+    // Start processing
+    processNext(0);
+  }
+  
+  // Update specific units
+  function updateSpecificUnits() {
+    const specificUnitsInput = document.getElementById('specific-units').value;
+    const updateMethod = document.getElementById('update-method').value;
+    
+    if (!specificUnitsInput.trim()) {
+      updateStatus('Please enter specific units to update');
+      return;
+    }
+    
+    // Parse comma-separated units
+    const unitList = specificUnitsInput.split(',')
+      .map(unit => unit.trim().toUpperCase())
+      .filter(unit => unit.length > 0);
+    
+    if (unitList.length === 0) {
+      updateStatus('No valid units entered');
+      return;
+    }
+    
+    updateStatus(`Starting to update ${unitList.length} specific units...`);
+    
+    let successCount = 0;
+    let failureCount = 0;
+    
+    // Process each unit
+    function processNext(index) {
+      if (index >= unitList.length) {
+        updateStatus(`Completed updates: ${successCount} successes, ${failureCount} failures`);
+        return;
+      }
+      
+      const unit = unitList[index];
+      
+      if (!unitToAreaMap[unit]) {
+        updateStatus(`Unit ${unit} not found in mapping - skipping`);
+        failureCount++;
+        setTimeout(() => {
+          processNext(index + 1);
+        }, 100);
+        return;
+      }
+      
+      const areaValue = unitToAreaMap[unit];
+      
+      // Find units on the page
+      const unitFields = findUnitFields(unit);
+      
+      if (unitFields.length > 0) {
+        // Find area fields
+        const areaFields = findAreaFields();
+        
+        if (areaFields.length > 0) {
+          // Try to update
+          let success = false;
+          
+          for (const areaField of areaFields) {
+            let updateSuccess = false;
+            
+            switch (updateMethod) {
+              case "angular":
+                updateSuccess = updateAngularModel(areaField.element, areaValue);
+                break;
+              case "direct":
+                updateSuccess = updateDirectField(areaField.element, areaValue);
+                break;
+              case "events":
+                updateSuccess = updateFieldWithEvents(areaField.element, areaValue);
+                break;
+              case "all":
+                updateSuccess = updateFieldAllMethods(areaField.element, areaValue);
+                break;
+            }
+            
+            if (updateSuccess) {
+              highlightElement(areaField.element, "#2ecc71");
+              success = true;
+              break;
+            }
+          }
+          
+          if (success) {
+            successCount++;
+            updateStatus(`Updated unit ${unit} (${index+1}/${unitList.length}): ${areaValue} sq ft`);
+          } else {
+            failureCount++;
+            updateStatus(`Failed to update unit ${unit} (${index+1}/${unitList.length})`);
+          }
+        } else {
+          failureCount++;
+          updateStatus(`No area fields found for unit ${unit} (${index+1}/${unitList.length})`);
+        }
+      } else {
+        failureCount++;
+        updateStatus(`No fields found for unit ${unit} (${index+1}/${unitList.length})`);
+      }
+      
+      // Process next unit with delay
+      setTimeout(() => {
+        processNext(index + 1);
+      }, 250);
+    }
+    
+    // Start processing
+    processNext(0);
+  }
+  
+  // Find fields containing a specific unit
+  function findUnitFields(unit) {
+    const unitFields = [];
+    
+    // Get all input fields
+    const fields = document.querySelectorAll('input');
+    
+    for (const field of fields) {
+      const value = field.value || '';
+      const placeholder = field.placeholder || '';
+      
+      // Match the unit exactly or as part of a value
+      if (value === unit || 
+          value.includes(unit) || 
+          placeholder.toLowerCase().includes('unit')) {
+        unitFields.push(field);
+      }
+    }
+    
+    return unitFields;
+  }
+  
+  // Find fields for area values (placeholder with area, sqft, etc.)
+  function findAreaFields() {
+    const areaFields = [];
+    
+    // Get all input fields
+    const fields = document.querySelectorAll('input');
+    
+    for (const field of fields) {
+      const placeholder = field.placeholder || '';
+      const ngModel = field.getAttribute('ng-model') || '';
+      const id = field.id || '';
+      const name = field.name || '';
+      
+      // Match fields that are likely area inputs
+      if (placeholder.toLowerCase().includes('area') || 
+          placeholder.toLowerCase().includes('sqft') || 
+          placeholder.toLowerCase().includes('sq ft') || 
+          placeholder.toLowerCase().includes('size') ||
+          ngModel.includes('ydt.value') ||
+          id.includes('area') ||
+          name.includes('area')) {
+        areaFields.push({
+          element: field,
+          placeholder: placeholder,
+          ngModel: ngModel
+        });
+      }
+    }
+    
+    return areaFields;
+  }
+  
+  // Update field using Angular model
+  function updateAngularModel(element, value) {
+    try {
+      const ngModel = element.getAttribute('ng-model');
+      
+      if (!ngModel) {
+        return false;
+      }
+      
+      // Try to find Angular scope
+      if (!window.angular) {
+        return false;
+      }
+      
+      try {
+        const angularElement = window.angular.element(element);
+        
+        if (!angularElement.scope) {
+          return false;
+        }
+        
+        const scope = angularElement.scope();
+        
+        if (!scope) {
+          return false;
+        }
+        
+        // Handle 'ydt.value' or any similar model path
+        const parts = ngModel.split('.');
+        let current = scope;
+        
+        for (let i = 0; i < parts.length - 1; i++) {
+          if (!current[parts[i]]) {
+            current[parts[i]] = {};
+          }
+          current = current[parts[i]];
+        }
+        
+        const lastPart = parts[parts.length - 1];
+        
+        // Update the model value
+        current[lastPart] = value;
+        
+        // Apply the change
+        if (scope.$apply && typeof scope.$apply === 'function') {
+          scope.$apply();
+        }
+        
+        // Check if value was updated
+        return element.value == value;
+      } catch (e) {
+        console.error('Angular update error:', e);
+        return false;
+      }
+    } catch (e) {
+      console.error('Model update error:', e);
+      return false;
+    }
+  }
+  
+  // Update field directly
+  function updateDirectField(element, value) {
+    try {
+      const originalValue = element.value;
+      
+      // Try direct property setting
+      element.value = value;
+      
+      // Check if value was updated
+      return element.value == value;
+    } catch (e) {
+      console.error('Direct update error:', e);
+      return false;
+    }
+  }
+  
+  // Update field with events
+  function updateFieldWithEvents(element, value) {
+    try {
+      // Set value
+      element.value = value;
+      
+      // Dispatch events
+      try {
+        const inputEvent = new Event('input', { bubbles: true });
+        element.dispatchEvent(inputEvent);
+        
+        const changeEvent = new Event('change', { bubbles: true });
+        element.dispatchEvent(changeEvent);
+        
+        const blurEvent = new Event('blur', { bubbles: true });
+        element.dispatchEvent(blurEvent);
+      } catch (e) {
+        console.error('Event dispatch error:', e);
+      }
+      
+      // Check if value was updated
+      return element.value == value;
+    } catch (e) {
+      console.error('Events update error:', e);
+      return false;
+    }
+  }
+  
+  // Try all methods to update a field
+  function updateFieldAllMethods(element, value) {
+    // Try Angular model update first
+    if (updateAngularModel(element, value)) {
+      return true;
+    }
+    
+    // Try direct update
+    if (updateDirectField(element, value)) {
+      return true;
+    }
+    
+    // Try events update
+    if (updateFieldWithEvents(element, value)) {
+      return true;
+    }
+    
+    // Try delayed update as last resort
+    setTimeout(() => {
+      try {
+        // Last attempt with property descriptor
+        const descriptor = Object.getOwnPropertyDescriptor(element.constructor.prototype, 'value');
+        if (descriptor && descriptor.set) {
+          descriptor.set.call(element, value);
+        }
+        
+        // Trigger events after a short delay
+        setTimeout(() => {
+          element.dispatchEvent(new Event('input', { bubbles: true }));
+          element.dispatchEvent(new Event('change', { bubbles: true }));
+          element.dispatchEvent(new Event('blur', { bubbles: true }));
+        }, 10);
+      } catch (e) {
+        console.error('Delayed update error:', e);
+      }
+    }, 0);
+    
+    // Return true because we are attempting the update asynchronously
+    return true;
+  }
+  
+  // Highlight an element
+  function highlightElement(element, color = '#3498db') {
+    if (!element) return;
+    
+    // Save original styles
+    const originalBackground = element.style.backgroundColor;
+    const originalOutline = element.style.outline;
+    const originalTransition = element.style.transition;
+    
+    // Apply highlight
+    element.style.transition = 'background-color 0.3s ease, outline 0.3s ease';
+    element.style.backgroundColor = color + '33'; // 20% opacity
+    element.style.outline = `2px solid ${color}`;
+    
+    // Scroll element into view
+    scrollToElement(element);
+    
+    // Remove highlight after a delay
+    setTimeout(() => {
+      element.style.backgroundColor = originalBackground;
+      element.style.outline = originalOutline;
+      
+      // Remove transition after animation completes
+      setTimeout(() => {
+        element.style.transition = originalTransition;
+      }, 300);
+    }, 2000);
+  }
+  
+  // Scroll element into view
+  function scrollToElement(element) {
+    if (!element) return;
+    
+    // Scroll into view with a slight offset
+    try {
+      element.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center'
+      });
+    } catch (e) {
+      // Fallback to basic scrolling
+      try {
+        element.scrollIntoView();
+      } catch (e) {
+        // Ignore scroll errors
+      }
+    }
+  }
+  
+  // Update status message
+  function updateStatus(message) {
+    const statusBox = document.getElementById('status-box');
+    if (statusBox) {
+      statusBox.innerHTML = message;
+    }
+  }
+  
+  // Initialize the tool
+  createUI();
+  
+  // Initial status message
+  updateStatus(`<strong>Ready!</strong><br>Start by scanning for fields with placeholder "unit" and Angular model "ydt.value".`);
+})();
