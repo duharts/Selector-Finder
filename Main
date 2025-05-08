@@ -1,0 +1,935 @@
+javascript:(function() {
+  // Create UI for the selector finder
+  function createSelectorFinderUI() {
+    // Remove existing UI if present
+    const existingUI = document.getElementById('selector-finder-ui');
+    if (existingUI) {
+      document.body.removeChild(existingUI);
+    }
+    
+    // Create panel
+    const panel = document.createElement('div');
+    panel.id = 'selector-finder-ui';
+    panel.style = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      width: 350px;
+      background: white;
+      border: 2px solid #3498db;
+      border-radius: 8px;
+      padding: 15px;
+      z-index: 10000;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+      font-family: Arial, sans-serif;
+      max-height: 90vh;
+      overflow-y: auto;
+    `;
+    
+    // Add header
+    const header = document.createElement('h2');
+    header.textContent = 'Simple Selector Finder';
+    header.style = 'margin-top: 0; margin-bottom: 15px; color: #2c3e50; font-size: 18px;';
+    panel.appendChild(header);
+    
+    // Keyword search section
+    const keywordContainer = document.createElement('div');
+    keywordContainer.style = 'margin-bottom: 20px;';
+    
+    const keywordLabel = document.createElement('label');
+    keywordLabel.textContent = 'Search fields by keyword:';
+    keywordLabel.style = 'display: block; margin-bottom: 5px; font-weight: bold;';
+    keywordContainer.appendChild(keywordLabel);
+    
+    const keywordInput = document.createElement('input');
+    keywordInput.id = 'keyword-input';
+    keywordInput.type = 'text';
+    keywordInput.placeholder = 'unit, area, sqft, etc.';
+    keywordInput.style = `
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      box-sizing: border-box;
+      margin-bottom: 10px;
+    `;
+    keywordContainer.appendChild(keywordInput);
+    
+    const keywordButton = document.createElement('button');
+    keywordButton.textContent = 'Search Fields';
+    keywordButton.style = `
+      width: 100%;
+      padding: 10px;
+      background: #3498db;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+      margin-bottom: 10px;
+    `;
+    keywordButton.onclick = function() {
+      const keyword = document.getElementById('keyword-input').value.trim().toLowerCase();
+      if (keyword) {
+        searchFieldsByKeyword(keyword);
+      } else {
+        alert('Please enter a keyword to search');
+      }
+    };
+    keywordContainer.appendChild(keywordButton);
+    
+    // Quick keyword buttons
+    const quickKeywords = document.createElement('div');
+    quickKeywords.style = 'display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px;';
+    
+    ['unit', 'area', 'sqft', 'size'].forEach(keyword => {
+      const btn = document.createElement('button');
+      btn.textContent = keyword;
+      btn.style = `
+        padding: 5px 10px;
+        background: #f1f1f1;
+        border: 1px solid #ddd;
+        border-radius: 15px;
+        cursor: pointer;
+        font-size: 12px;
+      `;
+      btn.onclick = function() {
+        document.getElementById('keyword-input').value = keyword;
+        searchFieldsByKeyword(keyword);
+      };
+      quickKeywords.appendChild(btn);
+    });
+    
+    keywordContainer.appendChild(quickKeywords);
+    panel.appendChild(keywordContainer);
+    
+    // Results section
+    const resultsContainer = document.createElement('div');
+    resultsContainer.style = 'margin-bottom: 20px;';
+    
+    const resultsTitle = document.createElement('h3');
+    resultsTitle.textContent = 'Results';
+    resultsTitle.style = 'margin-top: 0; margin-bottom: 10px; font-size: 16px; color: #2c3e50;';
+    resultsContainer.appendChild(resultsTitle);
+    
+    const resultsBox = document.createElement('div');
+    resultsBox.id = 'results-box';
+    resultsBox.style = `
+      background: #f8f9fa;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 10px;
+      max-height: 300px;
+      overflow-y: auto;
+      font-size: 14px;
+    `;
+    resultsBox.innerHTML = '<em>Search results will appear here</em>';
+    resultsContainer.appendChild(resultsBox);
+    
+    panel.appendChild(resultsContainer);
+    
+    // Element inspector section
+    const inspectorContainer = document.createElement('div');
+    inspectorContainer.style = 'margin-bottom: 20px;';
+    
+    const inspectorTitle = document.createElement('h3');
+    inspectorTitle.textContent = 'Element Inspector';
+    inspectorTitle.style = 'margin-top: 0; margin-bottom: 10px; font-size: 16px; color: #2c3e50;';
+    inspectorContainer.appendChild(inspectorTitle);
+    
+    const inspectorButton = document.createElement('button');
+    inspectorButton.textContent = 'Start Inspector';
+    inspectorButton.style = `
+      width: 100%;
+      padding: 10px;
+      background: #2ecc71;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+      margin-bottom: 10px;
+    `;
+    inspectorButton.onclick = startInspector;
+    inspectorContainer.appendChild(inspectorButton);
+    
+    panel.appendChild(inspectorContainer);
+    
+    // Scan all fields section
+    const scanContainer = document.createElement('div');
+    scanContainer.style = 'margin-bottom: 20px;';
+    
+    const scanTitle = document.createElement('h3');
+    scanTitle.textContent = 'Scan All Fields';
+    scanTitle.style = 'margin-top: 0; margin-bottom: 10px; font-size: 16px; color: #2c3e50;';
+    scanContainer.appendChild(scanTitle);
+    
+    const scanButton = document.createElement('button');
+    scanButton.textContent = 'Scan All Fields';
+    scanButton.style = `
+      width: 100%;
+      padding: 10px;
+      background: #f39c12;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+    `;
+    scanButton.onclick = scanAllFields;
+    scanContainer.appendChild(scanButton);
+    
+    panel.appendChild(scanContainer);
+    
+    // Close button
+    const closeButton = document.createElement('button');
+    closeButton.textContent = 'Close';
+    closeButton.style = `
+      width: 100%;
+      padding: 8px;
+      background: #e74c3c;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-top: 10px;
+    `;
+    closeButton.onclick = function() {
+      document.body.removeChild(panel);
+    };
+    panel.appendChild(closeButton);
+    
+    // Add panel to document
+    document.body.appendChild(panel);
+    
+    return panel;
+  }
+  
+  // Search fields by keyword
+  function searchFieldsByKeyword(keyword) {
+    const resultsBox = document.getElementById('results-box');
+    resultsBox.innerHTML = `<em>Searching for fields matching "${keyword}"...</em>`;
+    
+    // Find all form fields
+    const allFields = document.querySelectorAll('input, select, textarea');
+    if (allFields.length === 0) {
+      resultsBox.innerHTML = '<em>No form fields found on the page</em>';
+      return;
+    }
+    
+    // Look for matches
+    const matches = [];
+    
+    for (const field of allFields) {
+      let confidence = 0;
+      let matchReason = [];
+      
+      // Check attributes
+      const valueText = field.value || '';
+      const placeholderText = field.placeholder || '';
+      const nameText = field.name || '';
+      const idText = field.id || '';
+      const classText = field.className || '';
+      
+      if (placeholderText.toLowerCase().includes(keyword)) {
+        confidence += 10;
+        matchReason.push(`Placeholder contains "${keyword}"`);
+      }
+      
+      if (nameText.toLowerCase().includes(keyword)) {
+        confidence += 8;
+        matchReason.push(`Name contains "${keyword}"`);
+      }
+      
+      if (idText.toLowerCase().includes(keyword)) {
+        confidence += 7;
+        matchReason.push(`ID contains "${keyword}"`);
+      }
+      
+      if (valueText.toLowerCase().includes(keyword)) {
+        confidence += 5;
+        matchReason.push(`Value contains "${keyword}"`);
+      }
+      
+      if (classText.toLowerCase().includes(keyword)) {
+        confidence += 3;
+        matchReason.push(`Class contains "${keyword}"`);
+      }
+      
+      // Check parent text
+      let parent = field.parentElement;
+      if (parent) {
+        let textContent = '';
+        for (const node of parent.childNodes) {
+          if (node.nodeType === Node.TEXT_NODE) {
+            textContent += node.textContent;
+          }
+        }
+        
+        if (textContent.toLowerCase().includes(keyword)) {
+          confidence += 6;
+          matchReason.push(`Parent text contains "${keyword}"`);
+        }
+      }
+      
+      // Special cases
+      if (keyword === 'unit' && /^\d+[A-Za-z]$/.test(valueText.trim())) {
+        confidence += 12;
+        matchReason.push('Value looks like a unit number (e.g., "1A")');
+      }
+      
+      if ((keyword === 'area' || keyword === 'sqft' || keyword === 'footage') && 
+          !isNaN(valueText) && valueText > 100 && valueText < 10000) {
+        confidence += 12;
+        matchReason.push('Value looks like square footage (100-10000)');
+      }
+      
+      // Check label
+      if (field.id) {
+        const label = document.querySelector(`label[for="${field.id}"]`);
+        if (label && label.textContent.toLowerCase().includes(keyword)) {
+          confidence += 10;
+          matchReason.push(`Label contains "${keyword}"`);
+        }
+      }
+      
+      if (confidence > 0) {
+        // Generate selector
+        let selector = '';
+        
+        if (field.id) {
+          selector = `#${field.id}`;
+        } else if (field.name) {
+          selector = `${field.tagName.toLowerCase()}[name="${field.name}"]`;
+        } else if (field.placeholder) {
+          selector = `${field.tagName.toLowerCase()}[placeholder="${field.placeholder}"]`;
+        } else {
+          selector = field.tagName.toLowerCase();
+        }
+        
+        matches.push({
+          element: field,
+          confidence,
+          matchReason,
+          selector,
+          valueText,
+          placeholderText
+        });
+      }
+    }
+    
+    // Sort by confidence
+    matches.sort((a, b) => b.confidence - a.confidence);
+    
+    // Display results
+    if (matches.length === 0) {
+      resultsBox.innerHTML = `<em>No fields found matching "${keyword}"</em>`;
+      return;
+    }
+    
+    let html = `<strong>Found ${matches.length} fields matching "${keyword}":</strong><br><br>`;
+    
+    for (let i = 0; i < matches.length; i++) {
+      const match = matches[i];
+      const element = match.element;
+      
+      // Determine confidence level
+      let confidenceLevel = 'Low';
+      let confidenceColor = '#e67e22';
+      
+      if (match.confidence >= 20) {
+        confidenceLevel = 'Very High';
+        confidenceColor = '#27ae60';
+      } else if (match.confidence >= 10) {
+        confidenceLevel = 'High';
+        confidenceColor = '#2ecc71';
+      } else if (match.confidence >= 5) {
+        confidenceLevel = 'Medium';
+        confidenceColor = '#f39c12';
+      }
+      
+      html += `<div style="margin-bottom: 10px; padding: 8px; border: 1px solid #ddd; border-radius: 4px; background: white;">`;
+      
+      // Element tag and confidence
+      html += `<div style="display: flex; justify-content: space-between; margin-bottom: 5px;">`;
+      html += `<strong>${element.tagName.toLowerCase()}</strong>`;
+      html += `<span style="background: ${confidenceColor}; padding: 2px 5px; border-radius: 4px; color: white; font-size: 12px;">
+        ${confidenceLevel} Confidence
+      </span>`;
+      html += `</div>`;
+      
+      // Field info
+      html += `<div style="margin-bottom: 5px; font-size: 12px;">`;
+      if (match.valueText) html += `Value: "${match.valueText}"<br>`;
+      if (match.placeholderText) html += `Placeholder: "${match.placeholderText}"<br>`;
+      if (element.name) html += `Name: "${element.name}"<br>`;
+      if (element.id) html += `ID: "${element.id}"<br>`;
+      html += `</div>`;
+      
+      // Match reason
+      html += `<div style="margin-bottom: 5px; font-size: 12px; color: #666;">`;
+      html += `<strong>Why matched:</strong> ${match.matchReason.join(', ')}`;
+      html += `</div>`;
+      
+      // Selector
+      html += `<div style="display: flex; align-items: center; margin-bottom: 5px;">`;
+      html += `<span style="font-size: 12px; margin-right: 5px;">Selector:</span>`;
+      html += `<code style="background: #f1f1f1; padding: 2px 5px; border-radius: 3px; font-size: 12px; flex: 1;">${match.selector}</code>`;
+      html += `<button onclick="copyToClip('${match.selector.replace(/'/g, "\\'")}')" style="border: none; background: #3498db; color: white; border-radius: 3px; padding: 2px 5px; margin-left: 5px; cursor: pointer; font-size: 12px;">Copy</button>`;
+      html += `</div>`;
+      
+      // Highlight button
+      html += `<button onclick="highlightEl('${match.selector.replace(/'/g, "\\'")}')" style="width: 100%; padding: 5px; background: #f1f1f1; border: 1px solid #ddd; border-radius: 3px; cursor: pointer; font-size: 12px;">Highlight</button>`;
+      
+      html += `</div>`;
+    }
+    
+    resultsBox.innerHTML = html;
+    
+    // Define helper functions in window scope
+    window.copyToClip = function(text) {
+      navigator.clipboard.writeText(text).then(
+        function() {
+          alert('Copied to clipboard: ' + text);
+        },
+        function() {
+          prompt('Copy this selector:', text);
+        }
+      );
+    };
+    
+    window.highlightEl = function(selector) {
+      try {
+        const el = document.querySelector(selector);
+        if (el) {
+          // Save original styles
+          const originalOutline = el.style.outline;
+          const originalBoxShadow = el.style.boxShadow;
+          
+          // Apply highlight
+          el.style.outline = '2px solid #e74c3c';
+          el.style.boxShadow = '0 0 10px rgba(231, 76, 60, 0.7)';
+          
+          // Scroll element into view
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          
+          // Remove highlight after 3 seconds
+          setTimeout(function() {
+            el.style.outline = originalOutline;
+            el.style.boxShadow = originalBoxShadow;
+          }, 3000);
+        } else {
+          alert('No element found with selector: ' + selector);
+        }
+      } catch (error) {
+        alert('Error using selector: ' + error.message);
+      }
+    };
+  }
+  
+  // Start inspector mode
+  function startInspector() {
+    const resultsBox = document.getElementById('results-box');
+    resultsBox.innerHTML = '<strong>Inspector active!</strong> Click on any form field...';
+    
+    // Create overlay
+    const overlay = document.createElement('div');
+    overlay.style = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(52, 152, 219, 0.2);
+      z-index: 9999;
+      cursor: crosshair;
+    `;
+    document.body.appendChild(overlay);
+    
+    // Handle clicks
+    overlay.onclick = function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      // Get element
+      const element = e.target;
+      
+      // Remove overlay
+      document.body.removeChild(overlay);
+      
+      // Get element info
+      displayElementInfo(element);
+    };
+  }
+  
+  // Display element info
+  function displayElementInfo(element) {
+    const resultsBox = document.getElementById('results-box');
+    
+    // Generate selector
+    let selector = '';
+    if (element.id) {
+      selector = `#${element.id}`;
+    } else if (element.name) {
+      selector = `${element.tagName.toLowerCase()}[name="${element.name}"]`;
+    } else if (element.placeholder) {
+      selector = `${element.tagName.toLowerCase()}[placeholder="${element.placeholder}"]`;
+    } else {
+      selector = element.tagName.toLowerCase();
+    }
+    
+    // Check for unit/area confidence
+    let unitConfidence = 0;
+    let areaConfidence = 0;
+    
+    // Check attributes
+    const valueText = element.value || '';
+    const placeholderText = element.placeholder || '';
+    const nameText = element.name || '';
+    const idText = element.id || '';
+    
+    // Unit confidence
+    if (/^\d+[A-Za-z]$/.test(valueText.trim())) {
+      unitConfidence += 15;
+    }
+    
+    if (placeholderText.toLowerCase().includes('unit') || 
+        nameText.toLowerCase().includes('unit') || 
+        idText.toLowerCase().includes('unit')) {
+      unitConfidence += 10;
+    }
+    
+    // Area confidence
+    if (!isNaN(valueText) && valueText > 100 && valueText < 10000) {
+      areaConfidence += 15;
+    }
+    
+    if (placeholderText.toLowerCase().includes('area') || placeholderText.toLowerCase().includes('sq') ||
+        nameText.toLowerCase().includes('area') || nameText.toLowerCase().includes('sq') ||
+        idText.toLowerCase().includes('area') || idText.toLowerCase().includes('sq')) {
+      areaConfidence += 10;
+    }
+    
+    // Determine field type
+    let fieldType = 'Unknown';
+    let fieldColor = '#95a5a6';
+    
+    if (unitConfidence > areaConfidence && unitConfidence > 5) {
+      fieldType = 'Unit';
+      fieldColor = '#3498db';
+    } else if (areaConfidence > unitConfidence && areaConfidence > 5) {
+      fieldType = 'Area';
+      fieldColor = '#2ecc71';
+    }
+    
+    // Build HTML
+    let html = '<strong>Element Information:</strong><br><br>';
+    
+    // Field type
+    html += `<div style="display: flex; margin-bottom: 10px;">`;
+    html += `<span style="background: ${fieldColor}; padding: 5px 10px; border-radius: 4px; color: white; font-weight: bold;">
+      Likely ${fieldType} Field
+    </span>`;
+    html += `</div>`;
+    
+    // Element attributes
+    html += `<div style="margin-bottom: 10px;">`;
+    html += `<strong>Tag:</strong> ${element.tagName.toLowerCase()}<br>`;
+    if (element.id) html += `<strong>ID:</strong> ${element.id}<br>`;
+    if (element.name) html += `<strong>Name:</strong> ${element.name}<br>`;
+    if (element.placeholder) html += `<strong>Placeholder:</strong> "${element.placeholder}"<br>`;
+    if (element.value) html += `<strong>Value:</strong> "${element.value}"<br>`;
+    if (element.className) html += `<strong>Classes:</strong> ${element.className}<br>`;
+    html += `</div>`;
+    
+    // Selector
+    html += `<div style="margin-bottom: 10px;">`;
+    html += `<strong>Recommended Selector:</strong><br>`;
+    html += `<div style="display: flex; align-items: center; margin-top: 5px;">`;
+    html += `<code style="background: #f1f1f1; padding: 3px 6px; border-radius: 3px; font-size: 13px; flex: 1;">${selector}</code>`;
+    html += `<button onclick="copyToClip('${selector.replace(/'/g, "\\'")}')" style="border: none; background: #3498db; color: white; border-radius: 3px; padding: 2px 5px; margin-left: 5px; cursor: pointer; font-size: 12px;">Copy</button>`;
+    html += `</div>`;
+    html += `</div>`;
+    
+    // Highlight button
+    html += `<button onclick="highlightEl('${selector.replace(/'/g, "\\'")}')" style="width: 100%; padding: 8px; background: #f1f1f1; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; margin-bottom: 10px;">Highlight Element</button>`;
+    
+    resultsBox.innerHTML = html;
+    
+    // Define helper functions
+    window.copyToClip = function(text) {
+      navigator.clipboard.writeText(text).then(
+        function() {
+          alert('Copied to clipboard: ' + text);
+        },
+        function() {
+          prompt('Copy this selector:', text);
+        }
+      );
+    };
+    
+    window.highlightEl = function(selector) {
+      try {
+        const el = document.querySelector(selector);
+        if (el) {
+          // Save original styles
+          const originalOutline = el.style.outline;
+          const originalBoxShadow = el.style.boxShadow;
+          
+          // Apply highlight
+          el.style.outline = '2px solid #e74c3c';
+          el.style.boxShadow = '0 0 10px rgba(231, 76, 60, 0.7)';
+          
+          // Scroll element into view
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          
+          // Remove highlight after 3 seconds
+          setTimeout(function() {
+            el.style.outline = originalOutline;
+            el.style.boxShadow = originalBoxShadow;
+          }, 3000);
+        } else {
+          alert('No element found with selector: ' + selector);
+        }
+      } catch (error) {
+        alert('Error using selector: ' + error.message);
+      }
+    };
+  }
+  
+  // Scan all fields on the page
+  function scanAllFields() {
+    const resultsBox = document.getElementById('results-box');
+    resultsBox.innerHTML = '<em>Scanning page for all form fields...</em>';
+    
+    // Find all form fields
+    const allFields = document.querySelectorAll('input, select, textarea');
+    
+    if (allFields.length === 0) {
+      resultsBox.innerHTML = '<em>No form fields found on the page</em>';
+      return;
+    }
+    
+    // Analyze fields
+    const unitFields = [];
+    const areaFields = [];
+    const otherFields = [];
+    
+    for (const field of allFields) {
+      // Skip hidden fields
+      if (field.type === 'hidden') continue;
+      
+      // Check for unit confidence
+      let unitConfidence = 0;
+      let areaConfidence = 0;
+      
+      // Check attributes
+      const valueText = field.value || '';
+      const placeholderText = field.placeholder || '';
+      const nameText = field.name || '';
+      const idText = field.id || '';
+      
+      // Unit confidence
+      if (/^\d+[A-Za-z]$/.test(valueText.trim())) {
+        unitConfidence += 15;
+      }
+      
+      if (placeholderText.toLowerCase().includes('unit') || 
+          nameText.toLowerCase().includes('unit') || 
+          idText.toLowerCase().includes('unit')) {
+        unitConfidence += 10;
+      }
+      
+      // Area confidence
+      if (!isNaN(valueText) && valueText > 100 && valueText < 10000) {
+        areaConfidence += 15;
+      }
+      
+      if (placeholderText.toLowerCase().includes('area') || placeholderText.toLowerCase().includes('sq') ||
+          nameText.toLowerCase().includes('area') || nameText.toLowerCase().includes('sq') ||
+          idText.toLowerCase().includes('area') || idText.toLowerCase().includes('sq')) {
+        areaConfidence += 10;
+      }
+      
+      // Generate selector
+      let selector = '';
+      if (field.id) {
+        selector = `#${field.id}`;
+      } else if (field.name) {
+        selector = `${field.tagName.toLowerCase()}[name="${field.name}"]`;
+      } else if (field.placeholder) {
+        selector = `${field.tagName.toLowerCase()}[placeholder="${field.placeholder}"]`;
+      } else {
+        selector = field.tagName.toLowerCase();
+      }
+      
+      // Determine field type
+      if (unitConfidence > areaConfidence && unitConfidence > 5) {
+        unitFields.push({
+          element: field,
+          confidence: unitConfidence,
+          selector
+        });
+      } else if (areaConfidence > unitConfidence && areaConfidence > 5) {
+        areaFields.push({
+          element: field,
+          confidence: areaConfidence,
+          selector
+        });
+      } else {
+        otherFields.push({
+          element: field,
+          selector
+        });
+      }
+    }
+    
+    // Sort by confidence
+    unitFields.sort((a, b) => b.confidence - a.confidence);
+    areaFields.sort((a, b) => b.confidence - a.confidence);
+    
+    // Build results
+    let html = '<strong>Scan Results:</strong><br><br>';
+    
+    // Unit fields
+    if (unitFields.length > 0) {
+      html += `<div style="margin-bottom: 15px;">`;
+      html += `<strong style="color: #3498db;">Unit Fields (${unitFields.length}):</strong><br>`;
+      
+      for (let i = 0; i < unitFields.length; i++) {
+        const field = unitFields[i];
+        const element = field.element;
+        
+        html += `<div style="margin: 5px 0; padding: 5px; border: 1px solid #ddd; border-radius: 4px; background: #f8f9fa;">`;
+        
+        // Field info
+        let fieldDesc = element.tagName.toLowerCase();
+        if (element.placeholder) fieldDesc += ` (placeholder="${element.placeholder}")`;
+        else if (element.name) fieldDesc += ` (name="${element.name}")`;
+        else if (element.id) fieldDesc += ` (id="${element.id}")`;
+        
+        html += `${fieldDesc}<br>`;
+        if (element.value) html += `<small>Value: "${element.value}"</small><br>`;
+        
+        // Selector
+        html += `<div style="display: flex; align-items: center; margin-top: 5px;">`;
+        html += `<code style="background: #f1f1f1; padding: 2px 5px; border-radius: 3px; font-size: 12px; flex: 1;">${field.selector}</code>`;
+        html += `<button onclick="copyToClip('${field.selector.replace(/'/g, "\\'")}')" style="border: none; background: #3498db; color: white; border-radius: 3px; padding: 2px 5px; margin-left: 5px; cursor: pointer; font-size: 12px;">Copy</button>`;
+        html += `</div>`;
+        
+        html += `</div>`;
+      }
+      
+      html += `</div>`;
+    }
+    
+    // Area fields
+    if (areaFields.length > 0) {
+      html += `<div style="margin-bottom: 15px;">`;
+      html += `<strong style="color: #2ecc71;">Area Fields (${areaFields.length}):</strong><br>`;
+      
+      for (let i = 0; i < areaFields.length; i++) {
+        const field = areaFields[i];
+        const element = field.element;
+        
+        html += `<div style="margin: 5px 0; padding: 5px; border: 1px solid #ddd; border-radius: 4px; background: #f8f9fa;">`;
+        
+        // Field info
+        let fieldDesc = element.tagName.toLowerCase();
+        if (element.placeholder) fieldDesc += ` (placeholder="${element.placeholder}")`;
+        else if (element.name) fieldDesc += ` (name="${element.name}")`;
+        else if (element.id) fieldDesc += ` (id="${element.id}")`;
+        
+        html += `${fieldDesc}<br>`;
+        if (element.value) html += `<small>Value: "${element.value}"</small><br>`;
+        
+        // Selector
+        html += `<div style="display: flex; align-items: center; margin-top: 5px;">`;
+        html += `<code style="background: #f1f1f1; padding: 2px 5px; border-radius: 3px; font-size: 12px; flex: 1;">${field.selector}</code>`;
+        html += `<button onclick="copyToClip('${field.selector.replace(/'/g, "\\'")}')" style="border: none; background: #2ecc71; color: white; border-radius: 3px; padding: 2px 5px; margin-left: 5px; cursor: pointer; font-size: 12px;">Copy</button>`;
+        html += `</div>`;
+        
+        html += `</div>`;
+      }
+      
+      html += `</div>`;
+    }
+    
+    // Other fields
+    if (otherFields.length > 0) {
+      html += `<div>`;
+      html += `<strong style="color: #95a5a6;">Other Fields (${otherFields.length}):</strong><br>`;
+      html += `<em style="font-size: 12px;">These fields didn't match unit or area patterns</em><br>`;
+      html += `</div>`;
+    }
+    
+    // Special section for unit-area pairing
+    if (unitFields.length > 0 && areaFields.length > 0) {
+      html += `<br><strong>Suggested Field Pairings:</strong><br>`;
+      
+      // Try to find logical pairings
+      const pairings = [];
+      
+      // First pass: look for adjacents with highest confidence
+      for (let i = 0; i < Math.min(unitFields.length, areaFields.length); i++) {
+        pairings.push({
+          unitField: unitFields[i],
+          areaField: areaFields[i]
+        });
+      }
+      
+      for (let i = 0; i < Math.min(3, pairings.length); i++) {
+        const pair = pairings[i];
+        
+        html += `<div style="margin: 5px 0; padding: 8px; border: 1px solid #ddd; border-radius: 4px; background: #f8f9fa;">`;
+        html += `<strong>Pair ${i+1}:</strong><br>`;
+        html += `<span style="color: #3498db;">Unit:</span> ${pair.unitField.selector}<br>`;
+        html += `<span style="color: #2ecc71;">Area:</span> ${pair.areaField.selector}<br>`;
+        
+        // Add a "Use This Pair" button
+        html += `<button onclick="usePair('${pair.unitField.selector.replace(/'/g, "\\'")}', '${pair.areaField.selector.replace(/'/g, "\\'")}')" style="width: 100%; padding: 5px; background: #f39c12; color: white; border: none; border-radius: 3px; cursor: pointer; margin-top: 5px; font-size: 12px;">Use This Pair</button>`;
+        
+        html += `</div>`;
+      }
+    }
+    
+    resultsBox.innerHTML = html;
+    
+    // Define helper functions
+    window.copyToClip = function(text) {
+      navigator.clipboard.writeText(text).then(
+        function() {
+          alert('Copied to clipboard: ' + text);
+        },
+        function() {
+          prompt('Copy this selector:', text);
+        }
+      );
+    };
+    
+    window.highlightEl = function(selector) {
+      try {
+        const el = document.querySelector(selector);
+        if (el) {
+          // Save original styles
+          const originalOutline = el.style.outline;
+          const originalBoxShadow = el.style.boxShadow;
+          
+          // Apply highlight
+          el.style.outline = '2px solid #e74c3c';
+          el.style.boxShadow = '0 0 10px rgba(231, 76, 60, 0.7)';
+          
+          // Remove highlight after 3 seconds
+          setTimeout(function() {
+            el.style.outline = originalOutline;
+            el.style.boxShadow = originalBoxShadow;
+          }, 3000);
+        } else {
+          alert('No element found with selector: ' + selector);
+        }
+      } catch (error) {
+        alert('Error using selector: ' + error.message);
+      }
+    };
+    
+    window.usePair = function(unitSelector, areaSelector) {
+      // Create a code snippet
+      const codeSnippet = `
+// Unit selector: ${unitSelector}
+// Area selector: ${areaSelector}
+
+// Example usage:
+const unitFields = document.querySelectorAll('${unitSelector}');
+const areaFields = document.querySelectorAll('${areaSelector}');
+
+// Fill area fields based on unit values
+for (let i = 0; i < Math.min(unitFields.length, areaFields.length); i++) {
+  const unitField = unitFields[i];
+  const areaField = areaFields[i];
+  
+  // Get unit code
+  const unitValue = unitField.value.trim();
+  
+  // Map of unit codes to areas
+  const unitToAreaMap = {
+    "1A": 767, "1B": 566, "1C": 566, "1D": 500, "1E": 380,
+    "2A": 617, "2B": 990, "2C": 480, "2D": 560, "2E": 305,
+    // ... add all your units here
+  };
+  
+  // Fill area if we have a mapping
+  if (unitToAreaMap[unitValue]) {
+    areaField.value = unitToAreaMap[unitValue];
+    
+    // Trigger change events
+    areaField.dispatchEvent(new Event('input', { bubbles: true }));
+    areaField.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+}
+`;
+      
+      // Show in a modal dialog
+      const modal = document.createElement('div');
+      modal.style = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        z-index: 10001;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      `;
+      
+      const dialog = document.createElement('div');
+      dialog.style = `
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        width: 80%;
+        max-width: 600px;
+        max-height: 80%;
+        overflow-y: auto;
+      `;
+      
+      dialog.innerHTML = `
+        <h3 style="margin-top: 0;">Code Snippet</h3>
+        <p>Here's a code snippet to use these selectors:</p>
+        <pre style="background: #f8f9fa; padding: 10px; border-radius: 4px; overflow-x: auto;">${codeSnippet}</pre>
+        <button id="copy-snippet" style="background: #3498db; color: white; border: none; border-radius: 4px; padding: 8px 15px; cursor: pointer; margin-right: 10px;">Copy Snippet</button>
+        <button id="close-modal" style="background: #e74c3c; color: white; border: none; border-radius: 4px; padding: 8px 15px; cursor: pointer;">Close</button>
+      `;
+      
+      modal.appendChild(dialog);
+      document.body.appendChild(modal);
+      
+      // Set up buttons
+      document.getElementById('copy-snippet').onclick = function() {
+        navigator.clipboard.writeText(codeSnippet).then(
+          function() {
+            alert('Code snippet copied to clipboard!');
+          },
+          function() {
+            alert('Failed to copy. Please select and copy manually.');
+          }
+        );
+      };
+      
+      document.getElementById('close-modal').onclick = function() {
+        document.body.removeChild(modal);
+      };
+      
+      // Close on click outside
+      modal.onclick = function(e) {
+        if (e.target === modal) {
+          document.body.removeChild(modal);
+        }
+      };
+    };
+  }
+  
+  // Create the UI
+  createSelectorFinderUI();
+})();
