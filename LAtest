@@ -1,3 +1,6 @@
+## Github prefill any info skyvern / html file
+
+
 javascript:(function(){let unitToAreaMap={};function getProcessedUnits(){try{const stored=localStorage.getItem('processedUnits');return stored?JSON.parse(stored):{}}catch(e){console.error('Error retrieving processed units:',e);return{}}}function saveProcessedUnit(unit){try{const processed=getProcessedUnits();processed[unit]=true;localStorage.setItem('processedUnits',JSON.stringify(processed))}catch(e){console.error('Error saving processed unit:',e)}}function resetProcessedUnits(){try{localStorage.removeItem('processedUnits')}catch(e){console.error('Error resetting processed units:',e)}}function createUI(){function loadScript(url,callback){const script=document.createElement('script');script.type='text/javascript';script.src=url;script.onload=callback;document.head.appendChild(script)}if(!window.XLSX){loadScript('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',continueInitUI);updateStatus('Loading required libraries...')}else{continueInitUI()}function continueInitUI(){const existingUI=document.getElementById('field-updater-ui');if(existingUI){document.body.removeChild(existingUI)}const panel=document.createElement('div');panel.id='field-updater-ui';panel.style=`
         position: fixed;
         top: 20px;
